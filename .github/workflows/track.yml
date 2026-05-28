@@ -1,15 +1,21 @@
 name: Track prices
 
 on:
-  # 3x daily, jittered minutes so we don't show up exactly on the hour.
-  # GitHub cron is UTC. LA is UTC-7 (PDT) most of the year.
-  # 16:17 UTC = 09:17 PT   (morning)
-  # 21:43 UTC = 14:43 PT   (afternoon)
-  # 03:11 UTC = 20:11 PT prior day (evening)
+  # 5x daily, ~30 min after each UDR pricing refresh.
+  # UDR refreshes at 6am, 9am, 12pm, 3pm PT.
+  # Times below are UTC aligned to PDT (UTC-7); during PST (Nov-Mar) runs
+  # shift to 1 hour later in PT, still safely after the refresh window.
+  #   13:34 UTC = 06:34 PT  (after 6am refresh)
+  #   16:38 UTC = 09:38 PT  (after 9am refresh)
+  #   19:41 UTC = 12:41 PT  (after 12pm refresh)
+  #   22:36 UTC = 15:36 PT  (after 3pm refresh)
+  #   04:11 UTC = 21:11 PT prior day (evening fallback)
   schedule:
-    - cron: "17 16 * * *"
-    - cron: "43 21 * * *"
-    - cron: "11 3 * * *"
+    - cron: "34 13 * * *"
+    - cron: "38 16 * * *"
+    - cron: "41 19 * * *"
+    - cron: "36 22 * * *"
+    - cron: "11 4 * * *"
   workflow_dispatch: {}
 
 permissions:
