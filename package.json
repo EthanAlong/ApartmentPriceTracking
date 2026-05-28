@@ -1,0 +1,14 @@
+{
+  "name": "apartment-price-tracking",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Track UDR Westerly on Lincoln 1B1B pricing over time",
+  "type": "module",
+  "scripts": {
+    "discover": "node scraper/discover_dom.js",
+    "track": "node scraper/track_prices.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
