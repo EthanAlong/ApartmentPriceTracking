@@ -27,8 +27,12 @@ concurrency:
 
 jobs:
   track:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.60 can't
+    # install system deps for ("Cannot install dependencies for
+    # ubuntu26.04-x64"). It only worked because the browser cache hit.
+    runs-on: ubuntu-24.04
+    # Two scrape attempts (~90s each worst case) + a 20s pause + setup.
+    timeout-minutes: 8
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +51,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-24.04-${{ hashFiles('package-lock.json') }}
 
       - name: Install Chromium (if not cached)
         if: steps.pw-cache.outputs.cache-hit != 'true'

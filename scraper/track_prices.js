@@ -67,7 +67,7 @@ async function extractUnits(page) {
   // Pull every data-* attribute we care about from the listing <li>s.
   return page.evaluate(() => {
     const lis = document.querySelectorAll(
-      '#unitListingContainer li.apartment[data-rent]',
+      "#unitListingContainer li.apartment[data-rent]",
     );
     return Array.from(lis).map((li) => ({
       unit: li.dataset.number || li.dataset.title || "",
@@ -88,31 +88,55 @@ async function extractUnits(page) {
 
 async function scrape() {
   const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-      "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    viewport: { width: 1440, height: 900 },
-    locale: "en-US",
-  });
-  const page = await ctx.newPage();
+  try {
+    const ctx = await browser.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      viewport: { width: 1440, height: 900 },
+      locale: "en-US",
+    });
+    const page = await ctx.newPage();
 
-  await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 45000 });
-  // Listings render after a JS init; wait for at least one <li> with a rent.
-  await page.waitForSelector(
-    "#unitListingContainer li.apartment[data-rent]",
-    { timeout: 30000 },
-  );
-  // Belt-and-suspenders: let any trailing hydration finish.
-  await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
+    await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 45000 });
+    // Listings render after a JS init; wait for at least one <li> with a rent.
+    await page.waitForSelector(
+      "#unitListingContainer li.apartment[data-rent]",
+      { timeout: 30000 },
+    );
+    // Belt-and-suspenders: let any trailing hydration finish.
+    await page
+      .waitForLoadState("networkidle", { timeout: 10000 })
+      .catch(() => {});
 
-  const raw = await extractUnits(page);
-  await browser.close();
-  return raw;
+    return await extractUnits(page);
+  } finally {
+    await browser.close();
+  }
+}
+
+// UDR's listing occasionally takes >30s to hydrate (run #792 timed out on
+// the waitForSelector, the next run was fine). One retry after a pause turns
+// that from a red run into a slow one; a real DOM change still fails twice.
+const ATTEMPTS = 2;
+const RETRY_DELAY_MS = 20000;
+
+async function scrapeWithRetry() {
+  for (let i = 1; ; i++) {
+    try {
+      return await scrape();
+    } catch (err) {
+      if (i >= ATTEMPTS) throw err;
+      console.warn(
+        `attempt ${i} failed (${err.name}: ${err.message.split("\n")[0]}); retrying in ${RETRY_DELAY_MS / 1000}s`,
+      );
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
+  }
 }
 
 async function main() {
-  const raw = await scrape();
+  const raw = await scrapeWithRetry();
 
   if (raw.length === 0) {
     console.error("ERROR: 0 units extracted. Page structure may have changed.");
