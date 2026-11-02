@@ -29,3 +29,6 @@ scraper/dom_dump_*.txt
 scraper/dom_dump_*.json
 scraper/dom_dump_*.api.json
 scraper/failed_run_*.txt
+
+# Claude Code local settings
+.claude/settings.local.json
